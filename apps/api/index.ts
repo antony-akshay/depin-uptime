@@ -1,8 +1,13 @@
 import express from "express";
 import {  authMiddleware } from "./middleware";
 import { prismaClient } from "db/client";
-
+import cors from 'cors';
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 
 app.use(express.json());
 
@@ -10,6 +15,8 @@ app.use(express.json());
 app.post("/api/v1/website", authMiddleware,async (req, res) => {
     const userId = req.userId!;
     const { url } = req.body;  
+
+    console.log("create webiste api called");
     
     const data = await prismaClient.website.create({
         data:{
@@ -50,6 +57,9 @@ app.get("/api/v1/websites", authMiddleware, async(req, res) => {
         where:{
             userId,
             disabled:false
+        },
+        include:{
+            ticks:true
         }
     })
 
@@ -78,5 +88,5 @@ app.delete("/api/v1/website/:websiteId", authMiddleware, async  (req, res) => {
 })
 
 
-app.listen(3000);
+app.listen(3001);
 

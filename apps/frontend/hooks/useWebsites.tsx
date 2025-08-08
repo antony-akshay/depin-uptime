@@ -22,6 +22,7 @@ export function useWebsites() {
 
     async function refreshWebsites () {
         const token = await getToken();
+        console.log('Refreshing websites...67 ');
         const response = await axios.get(`${API_BACKEND_URL}/api/v1/websites`, {
             headers: {
                 Authorization: token, 
@@ -41,5 +42,5 @@ export function useWebsites() {
         return ()=> clearInterval(interval);
     },[]);
 
-    return websites;
+    return {websites,refreshWebsites};
 }

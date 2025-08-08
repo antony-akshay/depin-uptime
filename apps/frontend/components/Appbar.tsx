@@ -12,7 +12,7 @@ import { Activity } from 'lucide-react';
 export function AppBar() {
     return <div className='flex justify-between items-center'>
         <Activity className="w-8 h-8 text-green-500" />
-              <span className="text-2xl font-bold text-white">Better Uptime</span>
+        <span className="text-2xl font-bold text-white">Better Uptime</span>
         <div>
             <SignedOut>
                 <SignInButton />

@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import {
-  ClerkProvider,
-} from '@clerk/nextjs'
+import { ClerkProvider } from "@clerk/nextjs";
 import { AppBar } from "@/components/Appbar";
-import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/Providers"; // ✅ import the wrapper
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,13 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
       <ClerkProvider>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <ThemeProvider defaultTheme="dark" attribute="class" forcedTheme="dark">
+          <Providers>
             <AppBar />
             {children}
-          </ThemeProvider>
+          </Providers>
         </body>
       </ClerkProvider>
     </html>
