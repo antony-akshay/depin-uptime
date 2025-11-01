@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import axios from "axios";
 import { useWebsites } from "../hooks/useWebsites"; // still separate
+import { API_BACKEND_URL } from '@/config';
 // API_BACKEND_URL inline
-const API_BACKEND_URL = "postgresql://akshay:jaya@localhost:5432/noah";
 
 /* --------------------- useDarkMode Hook --------------------- */
 import { useEffect } from "react";
@@ -77,40 +77,46 @@ function StatusCircle({
 }
 
 /* --------------------- UptimeTicks --------------------- */
-function UptimeTicks({ uptimeData }: { uptimeData: boolean[] }) {
+function UptimeTicks({ uptimeData }: { uptimeData: ("up" | "down" | "unknown")[] }) {
   return (
     <div className="flex gap-1 items-center">
       <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">
         Last 30 min:
       </span>
       <div className="flex gap-1">
-        {uptimeData.map((isUp, index) => (
-          <div
-            key={index}
-            className={`w-3 h-6 rounded-sm ${
-              isUp ? "bg-green-500" : "bg-red-500"
-            }`}
-            title={`${isUp ? "Up" : "Down"} - ${30 - index * 3} min ago`}
-          />
-        ))}
+        {uptimeData.map((status, index) => {
+          let color = "bg-gray-400"; // default: unknown
+          if (status === "up") color = "bg-green-500";
+          else if (status === "down") color = "bg-red-500";
+
+          return (
+            <div
+              key={index}
+              className={`w-3 h-6 rounded-sm ${color}`}
+              title={`${status === "up"
+                ? "Up"
+                : status === "down"
+                ? "Down"
+                : "No data"
+              } - ${30 - index * 3} min ago`}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
 /* --------------------- Tick Aggregation Utils --------------------- */
-function aggregateTicksBy3Minutes(ticks: any[]): boolean[] {
-  if (!ticks || ticks.length === 0) {
-    return Array(10).fill(false);
-  }
+function aggregateTicksBy3Minutes(ticks: any[]): ("up" | "down" | "unknown")[] {
+  if (!ticks || ticks.length === 0) return Array(10).fill("unknown");
 
   const sortedTicks = [...ticks].sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   const now = new Date();
-  const aggregatedTicks: any[] = [];
+  const aggregatedTicks: ("up" | "down" | "unknown")[] = [];
 
   for (let i = 0; i < 10; i++) {
     const windowEnd = new Date(now.getTime() - i * 3 * 60 * 1000);
@@ -121,43 +127,49 @@ function aggregateTicksBy3Minutes(ticks: any[]): boolean[] {
       return tickTime >= windowStart && tickTime < windowEnd;
     });
 
-    if (windowTicks.length > 0) {
-      const upTicks = windowTicks.filter(
-        (tick) =>
-          tick.status === "up" ||
-          tick.status === "online" ||
-          tick.status === "success"
-      );
-      const isUp = upTicks.length > windowTicks.length / 2;
-      aggregatedTicks.push({ isUp });
+    if (windowTicks.length === 0) {
+      aggregatedTicks.push("unknown");
     } else {
-      aggregatedTicks.push({ isUp: false });
+      const upTicks = windowTicks.filter((tick) => {
+        const status = tick.status?.toLowerCase();
+        return (
+          status === "up" ||
+          status === "online" ||
+          status === "success" ||
+          status === "good"
+        );
+      });
+
+      const downTicks = windowTicks.filter((tick) => {
+        const status = tick.status?.toLowerCase();
+        return (
+          status === "down" ||
+          status === "offline" ||
+          status === "failure" ||
+          status === "bad"
+        );
+      });
+
+      if (upTicks.length > downTicks.length) aggregatedTicks.push("up");
+      else aggregatedTicks.push("down");
     }
   }
 
-  return aggregatedTicks.map((tick) => tick.isUp);
+  return aggregatedTicks;
 }
 
+/* --------------------- Latest Status --------------------- */
 function getLatestStatus(ticks: any[]): "good" | "bad" | "unknown" {
   if (!ticks || ticks.length === 0) return "unknown";
   const latestTick = [...ticks].sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )[0];
-  if (
-    latestTick.status === "up" ||
-    latestTick.status === "online" ||
-    latestTick.status === "success"
-  )
-    return "good";
-  if (
-    latestTick.status === "down" ||
-    latestTick.status === "offline" ||
-    latestTick.status === "failure"
-  )
-    return "bad";
+  const status = latestTick.status?.toLowerCase();
+  if (["up", "online", "success", "good"].includes(status)) return "good";
+  if (["down", "offline", "failure", "bad"].includes(status)) return "bad";
   return "unknown";
 }
+
 
 /* --------------------- WebsiteCard --------------------- */
 function WebsiteCard({
@@ -216,7 +228,7 @@ function CreateWebsiteModal({
     e.preventDefault();
     const token = await getToken();
     await axios.post(
-      `${API_BACKEND_URL}/api/v1/websites`,
+      `${API_BACKEND_URL}/api/v1/website`,
       { url },
       { headers: { Authorization: token } }
     );

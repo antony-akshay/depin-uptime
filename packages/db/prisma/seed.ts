@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { prismaClient } from "../src";
 
-const USER_ID = "4";
+const USER_ID = "2";
 
 async function seed() {
     await prismaClient.user.create({
         data: {
             id: USER_ID,
-            email: "test@test.com",
+            email: "secondtest@test.com",
 
         }
     })
@@ -15,8 +15,8 @@ async function seed() {
     const website = await prismaClient.website.create({
         data: {
             id: USER_ID,
-            url: "http://google.com",
-            userId: "1"
+            url: "http://sqaris.com", 
+            userId: "2"
         }
     })
 

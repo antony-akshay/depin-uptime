@@ -19,8 +19,9 @@ app.use(express.json());
 
 // to create a website
 app.post("/api/v1/website", authMiddleware,async (req, res) => {
-    const userId = req.userId!;
+    const userId = "2";
     const { url } = req.body;  
+    console.log(req.userId);
 
     console.log("create webiste api called");
     
@@ -57,7 +58,7 @@ app.get("/api/v1/website/status", authMiddleware, async(req, res) => {
 
 // return all websites
 app.get("/api/v1/websites", authMiddleware, async(req, res) => {
-    const userId = req.userId!;
+    const userId = "2";
 
     const websites = await prismaClient.website.findMany({
         where:{
