@@ -1,3 +1,9 @@
+import dotenv from 'dotenv';
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, "../../packages/db/.env") });
+
+
 import express from "express";
 import {  authMiddleware } from "./middleware";
 import { prismaClient } from "db/client";
@@ -62,8 +68,9 @@ app.get("/api/v1/websites", authMiddleware, async(req, res) => {
             ticks:true
         }
     })
+    console.log({websites});
 
-    res.json(websites)
+    res.json({websites})
 })
 
 // delete website

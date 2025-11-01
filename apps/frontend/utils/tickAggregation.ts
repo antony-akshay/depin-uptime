@@ -79,16 +79,25 @@ export function calculateUptimePercentage(ticks: Tick[]): number {
   return Math.round((upTicks.length / ticks.length) * 100 * 10) / 10;
 }
 
-export function getLatestStatus(ticks: Tick[]): boolean {
-  if (!ticks || ticks.length === 0) return false;
+export function getLatestStatus(ticks: Tick[]): "good" | "bad" | "unknown" {
+  if (!ticks || ticks.length === 0) return "unknown";
 
   // Sort by createdAt and get the most recent tick
-  const latestTick = ticks.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const latestTick = [...ticks].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )[0];
 
-  return latestTick.status === 'up' || latestTick.status === 'online' || latestTick.status === 'success';
+  if (latestTick.status === "up" || latestTick.status === "online" || latestTick.status === "success") {
+    return "good";
+  }
+
+  if (latestTick.status === "down" || latestTick.status === "offline" || latestTick.status === "failure") {
+    return "bad";
+  }
+
+  return "unknown";
 }
+
 
 export function getAverageResponseTime(ticks: Tick[]): number {
   if (!ticks || ticks.length === 0) return 0;

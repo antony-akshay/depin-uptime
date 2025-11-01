@@ -7,7 +7,7 @@ interface ProcessedWebsite {
   id: string;
   name: string;
   url: string;
-  status: boolean;
+  status: 'good' | 'bad' | 'unknown';
   uptimePercentage: number;
   responseTime: number;
   uptimeData: boolean[];
@@ -21,6 +21,14 @@ interface WebsiteCardProps {
 export default function WebsiteCard({ website }: WebsiteCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const statusConfig = {
+    good: { color: 'bg-green-500', text: 'text-green-700 dark:text-green-400', message: 'All systems operational' },
+    bad: { color: 'bg-red-500', text: 'text-red-700 dark:text-red-400', message: 'Service unavailable' },
+    unknown: { color: 'bg-gray-400', text: 'text-gray-700 dark:text-gray-400', message: 'Status unknown' }
+  };
+
+  const { color, text, message } = statusConfig[website.status];
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-md">
       <button
@@ -29,8 +37,8 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-            <StatusCircle isUp={website.status} size="lg" />
-            
+            <StatusCircle status={website.status} size="lg" />
+
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {website.name}
@@ -42,7 +50,7 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
                 </span>
               </div>
             </div>
-            
+
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {website.uptimePercentage}%
@@ -52,7 +60,7 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="ml-4">
             {isExpanded ? (
               <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -62,7 +70,7 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
           </div>
         </div>
       </button>
-      
+
       {isExpanded && (
         <div className="px-6 pb-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
           <div className="pt-4 space-y-6">
@@ -73,7 +81,7 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
               </h4>
               <UptimeTicks uptimeData={website.uptimeData} />
             </div>
-            
+
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
@@ -89,7 +97,7 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-green-500" />
@@ -103,23 +111,17 @@ export default function WebsiteCard({ website }: WebsiteCardProps) {
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                 <div className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-full ${
-                    website.status ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
+                  <div className={`w-4 h-4 rounded-full ${color}`} />
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     Current Status
                   </span>
                 </div>
                 <div className="mt-1">
-                  <span className={`text-sm font-medium ${
-                    website.status 
-                      ? 'text-green-700 dark:text-green-400' 
-                      : 'text-red-700 dark:text-red-400'
-                  }`}>
-                    {website.status ? 'All systems operational' : 'Service unavailable'}
+                  <span className={`text-sm font-medium ${text}`}>
+                    {message}
                   </span>
                 </div>
               </div>
