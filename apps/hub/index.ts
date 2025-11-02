@@ -2,8 +2,8 @@ import { randomUUIDv7, type ServerWebSocket } from "bun";
 import type { IncomingMessage, SignupIncomingMessage } from "../../packages/common";
 import { prismaClient } from "db/client";
 import { PublicKey } from "@solana/web3.js";
-import nacl from "tweetnacl"; //signature verification
-import nacl_util from "tweetnacl";
+import nacl, { verify } from "tweetnacl"; //signature verification
+import nacl_util from "tweetnacl-util";
 
 const availableValidators: { validatorId: string, socket: ServerWebSocket<unknown>, publickey: string }[] = [];
 
@@ -33,8 +33,13 @@ Bun.serve({
                     await signupHandler(ws, data.data);
                 }
             } else if (data.type == 'validate') {
-                CALLBACKS[data.data.callbackId](data);
-                delete CALLBACKS[data.data.callbackId];
+                const callbackcheck = CALLBACKS[data.data.callbackId];
+                if (callbackcheck) {
+                    callbackcheck(data);
+                    delete CALLBACKS[data.data.callbackId];
+                } else {
+                    console.warn(`No callback found for id ${data.data.callbackId}`);
+                }
             }
         },
         async close(ws: ServerWebSocket<unknown>) {
@@ -91,3 +96,68 @@ async function signupHandler(ws: ServerWebSocket<unknown>, { ip, publicKey, sign
     });
     return;
 }
+
+async function verifyMessage(message: string, publicKey: string, signature: string) {
+    const messageBytes = nacl_util.decodeUTF8(message);
+    const result = nacl.sign.detached.verify(
+        messageBytes,
+        new Uint8Array(JSON.parse(signature)),
+        new PublicKey(publicKey).toBytes(),
+    );
+
+    return result;
+}
+
+setInterval(async () => {
+    const websitesToMonitor = await prismaClient.website.findMany({
+        where: {
+            disabled: false,
+        }
+    });
+
+    for (const website of websitesToMonitor) {
+        availableValidators.forEach(validator => {
+            const callbackId = randomUUIDv7();
+            console.log(`Sending validate to ${validator.validatorId} ${website.url}`);
+            validator.socket.send(JSON.stringify({
+                type: 'vaidate',
+                data: {
+                    url: website.url,
+                    callbackId
+                }
+            }));
+
+            CALLBACKS[callbackId] = async (data: IncomingMessage) => {
+                if (data.type == 'validate') {
+                    const { validatorId, status, latency, signedMessage } = data.data;
+                    const verified = await verifyMessage(
+                        `Replying to ${callbackId}`,
+                        validator.publickey,
+                        signedMessage
+                    );
+                    if (!verified) {
+                        return;
+                    }
+                    await prismaClient.$transaction(async (tx) => {
+                        await tx.websiteTick.create({
+                            data: {
+                                websiteId: website.id,
+                                validatorId,
+                                status,
+                                latency,
+                                createdAt: new Date(),
+                            }
+                        });
+
+                        await tx.validator.update({
+                            where: { id: validatorId },
+                            data: {
+                                pendingPayouts: { increment: COST_PER_VALIDATION },
+                            }
+                        });
+                    });
+                }
+            };
+        });
+    }
+}, 60 * 1000);
