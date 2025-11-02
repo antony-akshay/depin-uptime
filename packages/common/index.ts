@@ -1,3 +1,4 @@
+//from validator
 export interface SignupIncomingMessage{
     ip:string;
     publicKey:string;
@@ -14,6 +15,7 @@ export interface ValidateIncomingMessage{
     callbackId:string;
 }
 
+////from hub
 export interface SignupOutgoingMessage{
     validatorId:string;
     callbackId:string;
