@@ -1,6 +1,8 @@
 // import { clerkMiddleware } from '@clerk/nextjs/server';
 
 import type { NextFunction ,Request,Response} from "express";
+import jwt from "jsonwebtoken";
+import { JWT_PUBLIC_KEY } from "./config";
 
 // export default clerkMiddleware();
 
@@ -15,8 +17,17 @@ import type { NextFunction ,Request,Response} from "express";
 
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
+  const token = req.headers['authorization'];
+  if(!token){
+    return res.status(402).json({error:'Unauthorized ahn ketto'});
+  }
 
-  req.userId = "2";
+  const decoded = jwt.verify(token,JWT_PUBLIC_KEY);
+  console.log(decoded);
+  if(!decoded || !decoded.sub){
+    return res.status(402).json({error:'Unauthorized ahn ketto'});
+  }
+
+  req.userId = decoded.sub as string;
   next()
 }

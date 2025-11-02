@@ -5,7 +5,6 @@ import { useAuth } from "@clerk/nextjs";
 import axios from "axios";
 import { useWebsites } from "../hooks/useWebsites"; // still separate
 import { API_BACKEND_URL } from '@/config';
-// API_BACKEND_URL inline
 
 /* --------------------- useDarkMode Hook --------------------- */
 import { useEffect } from "react";
