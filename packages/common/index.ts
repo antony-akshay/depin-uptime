@@ -38,8 +38,8 @@ export type IncomingMessage = {
 
 export type OutgoingMessage = {
     type : 'signup'
-    data : SignupIncomingMessage
+    data : SignupOutgoingMessage
 } | {
     type : 'validate'
-    data : ValidateIncomingMessage,
+    data : ValidateOutgoingMessage,
 }
