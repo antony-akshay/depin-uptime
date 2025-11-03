@@ -1,49 +1,50 @@
 import { randomUUIDv7, type ServerWebSocket } from "bun";
-import type { IncomingMessage, SignupIncomingMessage } from "../../packages/common";
+import type { IncomingMessage, SignupIncomingMessage } from "common";
 import { prismaClient } from "db/client";
 import { PublicKey } from "@solana/web3.js";
-import nacl, { verify } from "tweetnacl"; //signature verification
+import nacl from "tweetnacl";
 import nacl_util from "tweetnacl-util";
 
-const availableValidators: { validatorId: string, socket: ServerWebSocket<unknown>, publickey: string }[] = [];
+const availableValidators: { validatorId: string, socket: ServerWebSocket<unknown>, publicKey: string }[] = [];
 
 const CALLBACKS: { [callbackId: string]: (data: IncomingMessage) => void } = {}
-const COST_PER_VALIDATION = 100;//lamports
+const COST_PER_VALIDATION = 100; // in lamports
 
 Bun.serve({
-    fetch(request, server) {
-        if (!server.upgrade) {
+    fetch(req, server) {
+        if (server.upgrade(req)) {
             return;
         }
-        return new Response("upgrade failed", { status: 500 });
+        return new Response("Upgrade failed", { status: 500 });
     },
     port: 8081,
     websocket: {
         async message(ws: ServerWebSocket<unknown>, message: string) {
             const data: IncomingMessage = JSON.parse(message);
 
-            if (data.type == 'signup') {
+            if (data.type === 'signup') {
 
                 const verified = await verifyMessage(
-                    `Signed message for ${data.data.callbackId},${data.data.publicKey}`,
+                    `Signed message for ${data.data.callbackId}, ${data.data.publicKey}`,
                     data.data.publicKey,
                     data.data.signedMessage
                 );
                 if (verified) {
                     await signupHandler(ws, data.data);
                 }
-            } else if (data.type == 'validate') {
+            } else if (data.type === 'validate') {
                 const callbackcheck = CALLBACKS[data.data.callbackId];
                 if (callbackcheck) {
+                    console.log(`🧮 Validation result received for callback: ${data.data.callbackId}`);
                     callbackcheck(data);
                     delete CALLBACKS[data.data.callbackId];
                 } else {
-                    console.warn(`No callback found for id ${data.data.callbackId}`);
+                    console.warn(`⚠️ No callback found for id ${data.data.callbackId}`);
                 }
             }
         },
         async close(ws: ServerWebSocket<unknown>) {
-            availableValidators.splice(availableValidators.findIndex(v => v.socket == ws), 1);
+            availableValidators.splice(availableValidators.findIndex(v => v.socket === ws), 1);
         }
     },
 });
@@ -51,8 +52,8 @@ Bun.serve({
 async function signupHandler(ws: ServerWebSocket<unknown>, { ip, publicKey, signedMessage, callbackId }: SignupIncomingMessage) {
     const validatorDb = await prismaClient.validator.findFirst({
         where: {
-            publicKey
-        }
+            publicKey,
+        },
     });
 
     if (validatorDb) {
@@ -60,41 +61,40 @@ async function signupHandler(ws: ServerWebSocket<unknown>, { ip, publicKey, sign
             type: 'signup',
             data: {
                 validatorId: validatorDb.id,
-                callbackId
-            }
+                callbackId,
+            },
         }));
 
         availableValidators.push({
             validatorId: validatorDb.id,
             socket: ws,
-            publickey: validatorDb.publicKey
+            publicKey: validatorDb.publicKey,
         });
         return;
     }
 
-
+    //TODO: Given the ip, return the location
     const validator = await prismaClient.validator.create({
         data: {
             ip,
             publicKey,
-            location: "unknown"
-        }
+            location: 'unknown',
+        },
     });
 
     ws.send(JSON.stringify({
         type: 'signup',
         data: {
             validatorId: validator.id,
-            callbackId
-        }
+            callbackId,
+        },
     }));
 
     availableValidators.push({
         validatorId: validator.id,
         socket: ws,
-        publickey: validator.publicKey
+        publicKey: validator.publicKey,
     });
-    return;
 }
 
 async function verifyMessage(message: string, publicKey: string, signature: string) {
@@ -112,7 +112,7 @@ setInterval(async () => {
     const websitesToMonitor = await prismaClient.website.findMany({
         where: {
             disabled: false,
-        }
+        },
     });
 
     for (const website of websitesToMonitor) {
@@ -120,24 +120,25 @@ setInterval(async () => {
             const callbackId = randomUUIDv7();
             console.log(`Sending validate to ${validator.validatorId} ${website.url}`);
             validator.socket.send(JSON.stringify({
-                type: 'vaidate',
+                type: 'validate',
                 data: {
                     url: website.url,
                     callbackId
-                }
+                },
             }));
 
             CALLBACKS[callbackId] = async (data: IncomingMessage) => {
-                if (data.type == 'validate') {
+                if (data.type === 'validate') {
                     const { validatorId, status, latency, signedMessage } = data.data;
                     const verified = await verifyMessage(
                         `Replying to ${callbackId}`,
-                        validator.publickey,
+                        validator.publicKey,
                         signedMessage
                     );
                     if (!verified) {
                         return;
                     }
+
                     await prismaClient.$transaction(async (tx) => {
                         await tx.websiteTick.create({
                             data: {
@@ -146,14 +147,14 @@ setInterval(async () => {
                                 status,
                                 latency,
                                 createdAt: new Date(),
-                            }
+                            },
                         });
 
                         await tx.validator.update({
                             where: { id: validatorId },
                             data: {
                                 pendingPayouts: { increment: COST_PER_VALIDATION },
-                            }
+                            },
                         });
                     });
                 }

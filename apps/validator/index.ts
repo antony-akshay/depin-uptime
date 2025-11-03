@@ -1,5 +1,5 @@
 import { randomUUIDv7 } from "bun";
-import type { OutgoingMessage, SignupOutgoingMessage, ValidateOutgoingMessage } from "../../packages/common";
+import type { OutgoingMessage, SignupOutgoingMessage, ValidateOutgoingMessage } from "common";
 import { Keypair } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import nacl_util from "tweetnacl-util";
